@@ -170,6 +170,9 @@ internal class StreamDeltaNormalizer(
 }
 
 internal object SLM {
+    fun nativeRuntimePoisonErrorOrNull(): NativeRuntimePoisonedException? =
+        LiteRtLM.nativeRuntimePoisonErrorOrNull()
+
     fun setApplicationContext(context: Context) {
         val appContext = context.applicationContext ?: context
         LiteRtLM.setApplicationContext(appContext)
