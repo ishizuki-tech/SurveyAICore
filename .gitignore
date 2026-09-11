@@ -4,3 +4,9 @@ local.properties
 **/build/
 *.iml
 .DS_Store
+
+# Local model artifacts
+/models/
+*.litertlm
+*.gguf
+*.tflite
