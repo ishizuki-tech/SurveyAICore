@@ -1,0 +1,2 @@
+# Preserve the Windows Gradle wrapper CRLF while keeping whitespace checks strict.
+device-harness/gradlew.bat text eol=crlf whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SurveyAICore C5 Harness</string>
+    <string name="title">SurveyAICore C5 Harness</string>
+    <string name="status_ready">Artifact linked; %1$d public API types resolved. Ready for C5B.</string>
+</resources>
