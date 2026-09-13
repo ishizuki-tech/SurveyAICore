@@ -9,6 +9,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -88,9 +89,15 @@ internal class C6RequestControl internal constructor(
 }
 
 internal class C6OwnedRequest(
+    val requestId: Long,
     val control: C6RequestControl,
     val result: Deferred<C6RequestResult>,
-)
+    private val generateBegin: Deferred<Unit>,
+) {
+    suspend fun awaitGenerateBegin() {
+        generateBegin.await()
+    }
+}
 
 /** Public-API-only orchestration primitives for later C6 scenario slices. */
 internal class C6RuntimeRunner(
@@ -147,16 +154,27 @@ internal class C6RuntimeInstance internal constructor(
     ): C6OwnedRequest {
         val requestId = recorder.allocateRequestId()
         val control = C6RequestControl(recorder, instanceId, requestId, accelerator)
+        val generateBegin = CompletableDeferred<Unit>()
         val deferred =
             scope.async(start = CoroutineStart.LAZY) {
-                generate(requestId, prompt, cancellationPlan, control)
+                generate(requestId, prompt, cancellationPlan, control, generateBegin)
             }
         control.attach(deferred)
+        deferred.invokeOnCompletion { cause ->
+            if (!generateBegin.isCompleted) {
+                generateBegin.completeExceptionally(
+                    IllegalStateException(
+                        "C6 request $requestId terminated before GENERATE_BEGIN",
+                        cause,
+                    ),
+                )
+            }
+        }
         deferred.start()
         if (cancellationPlan.trigger == C6CancellationTrigger.IMMEDIATE) {
             control.requestCancel("immediate")
         }
-        return C6OwnedRequest(control, deferred)
+        return C6OwnedRequest(requestId, control, deferred, generateBegin)
     }
 
     suspend fun generate(
@@ -164,6 +182,7 @@ internal class C6RuntimeInstance internal constructor(
         prompt: String,
         cancellationPlan: C6CancellationPlan = C6CancellationPlan(),
         control: C6RequestControl = C6RequestControl(recorder, instanceId, requestId, accelerator),
+        generateBegin: CompletableDeferred<Unit>? = null,
     ): C6RequestResult {
         val terminal = AtomicBoolean(false)
         val firstDelta = AtomicBoolean(false)
@@ -174,6 +193,7 @@ internal class C6RuntimeInstance internal constructor(
             requestId = requestId,
             accelerator = accelerator,
         )
+        generateBegin?.complete(Unit)
 
         try {
             val result =

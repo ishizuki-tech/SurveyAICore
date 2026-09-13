@@ -94,7 +94,20 @@ class C6CancellationRecoveryInstrumentationTest {
         firstDeltaRequired: Boolean,
     ): CancellationOutcome {
         val beforeSequence = recorder.snapshot().lastOrNull()?.sequence ?: 0L
-        val ownedRequest = instance.launchGenerate(this, PROMPT, C6CancellationPlan(trigger = trigger))
+        val ownedRequest =
+            if (trigger == C6CancellationTrigger.IMMEDIATE) {
+                instance.launchGenerate(this, PROMPT)
+            } else {
+                instance.launchGenerate(this, PROMPT, C6CancellationPlan(trigger = trigger))
+            }
+        val expectedRequestId = ownedRequest.requestId
+        if (trigger == C6CancellationTrigger.IMMEDIATE) {
+            ownedRequest.awaitGenerateBegin()
+            assertTrue(
+                "Request 1 cancellation must be accepted after request-local GENERATE_BEGIN",
+                ownedRequest.control.requestCancel("after-generate-begin"),
+            )
+        }
         var cancellationObserved = false
         try {
             ownedRequest.result.await()
@@ -104,21 +117,26 @@ class C6CancellationRecoveryInstrumentationTest {
         assertTrue("C6C cancellation must surface CancellationException", cancellationObserved)
 
         val events = recorder.snapshot().filter { it.sequence > beforeSequence }
-        val requestId = events.single { it.type == C6EventType.GENERATE_BEGIN }.requestId!!
-        val cancelRequested = events.filter { it.type == C6EventType.CANCEL_REQUESTED && it.requestId == requestId }
-        val cancelObserved = events.filter { it.type == C6EventType.CANCEL_OBSERVED && it.requestId == requestId }
-        val cancelled = events.filter { it.type == C6EventType.GENERATE_CANCELLED && it.requestId == requestId }
+        val requestEvents = events.filter { it.requestId == expectedRequestId }
+        val begin = requestEvents.singleOrNull { it.type == C6EventType.GENERATE_BEGIN }
+            ?: throw AssertionError("Request $expectedRequestId did not reach request-local GENERATE_BEGIN before terminal state")
+        val cancelRequested = requestEvents.filter { it.type == C6EventType.CANCEL_REQUESTED }
+        val cancelObserved = requestEvents.filter { it.type == C6EventType.CANCEL_OBSERVED }
+        val cancelled = requestEvents.filter { it.type == C6EventType.GENERATE_CANCELLED }
         assertEquals(1, cancelRequested.size)
         assertEquals(1, cancelObserved.size)
         assertEquals(1, cancelled.size)
-        assertTrue(events.none { it.type == C6EventType.GENERATE_COMPLETE && it.requestId == requestId })
+        assertTrue(requestEvents.none { it.type == C6EventType.GENERATE_COMPLETE })
+        if (trigger == C6CancellationTrigger.IMMEDIATE) {
+            assertTrue(begin.sequence < cancelRequested.single().sequence)
+        }
         if (firstDeltaRequired) {
-            val firstDelta = events.single { it.type == C6EventType.FIRST_DELTA && it.requestId == requestId }
+            val firstDelta = requestEvents.single { it.type == C6EventType.FIRST_DELTA }
             assertTrue(firstDelta.sequence < cancelRequested.single().sequence)
         }
         return CancellationOutcome(
-            requestId = requestId,
-            startSequence = events.first { it.type == C6EventType.GENERATE_BEGIN && it.requestId == requestId }.sequence,
+            requestId = expectedRequestId,
+            startSequence = begin.sequence,
             terminalSequence = cancelled.single().sequence,
         )
     }
