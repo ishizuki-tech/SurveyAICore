@@ -22,3 +22,11 @@ scripts/run-c5-smoke.sh --check <model-path> [serial]
 ```
 
 `--check` is non-mutating. Normal `run-c5-smoke.sh` is a C5C2-only operation: it refreshes the AAR, builds and installs both APKs before provisioning, verifies an app-private partial-to-final model transfer, then runs exactly one required-model smoke. Do not use normal mode until C5C1 receives independent review. Neither script commits models, APKs, AARs, logs, or generated evidence.
+
+## C6 runtime-validation foundation
+
+C6 keeps the C5 smoke source and C5C evidence frozen. Its additive harness uses only the assembled AAR public API and assigns independent session, scenario, instance, and request identities; these harness identifiers are not LiteRT native run IDs.
+
+`scripts/run-c6.sh` has no default scenario. It requires an explicit reviewed selector and currently exposes only the non-inference `foundation` selector. Future C6 slices add their own selectors only after source review. The script verifies the C6 source baseline, Pixel 9a identity, package/run-as access, and the existing app-private model before doing any future replacement install. It never provisions, overwrites, deletes, or retransfers a model; a missing or mismatched model is a hard stop.
+
+Future C6 runs use replacement installation to preserve app data, then recheck `files/model.litertlm`. Fast identity checking verifies presence and exact size; `--model-check full` also verifies the full SHA-256. Each run emits a `C6_RUN_BOUNDARY_<session-id>_<scenario-id>` marker and stores instrumentation output plus boundary-scoped logcat outside tracked source. C6 does not clear logcat as its evidence boundary and does not auto-retry a failed scenario. C6A itself performs no real inference.
