@@ -195,6 +195,27 @@ class SurveyAICoreTest {
     }
 
     @Test
+    fun closeWaitsForClientCleanupCompletion() = runBlocking {
+        val closeEntered = CompletableDeferred<Unit>()
+        val closeRelease = CompletableDeferred<Unit>()
+        val client =
+            FakeInferenceClient(
+                closeEntered = closeEntered,
+                closeRelease = closeRelease,
+            )
+        val core = SurveyAICore.createForTesting(client, testModel())
+
+        val close = async(start = CoroutineStart.UNDISPATCHED) { core.close() }
+        closeEntered.await()
+
+        assertFalse(close.isCompleted)
+        closeRelease.complete(Unit)
+        close.await()
+
+        assertEquals(1, client.closeCalls)
+    }
+
+    @Test
     fun concurrentCloseCallersShareOneCompletion() = runBlocking {
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
@@ -471,6 +492,8 @@ class SurveyAICoreTest {
         private val queuedGenerationFailures: MutableList<Throwable> = mutableListOf(),
         private val generationEntered: CompletableDeferred<Unit>? = null,
         private val generationRelease: CompletableDeferred<Unit>? = null,
+        private val closeEntered: CompletableDeferred<Unit>? = null,
+        private val closeRelease: CompletableDeferred<Unit>? = null,
         private val closeFailure: Throwable? = null,
     ) : InferenceClient {
         var generatedModel: RuntimeModel? = null
@@ -501,8 +524,10 @@ class SurveyAICoreTest {
 
         override suspend fun reset(model: RuntimeModel): Result<Unit> = Result.success(Unit)
 
-        override fun close(model: RuntimeModel?) {
+        override suspend fun close(model: RuntimeModel?) {
             closeCalls++
+            closeEntered?.complete(Unit)
+            closeRelease?.await()
             closeFailure?.let { throw it }
         }
     }

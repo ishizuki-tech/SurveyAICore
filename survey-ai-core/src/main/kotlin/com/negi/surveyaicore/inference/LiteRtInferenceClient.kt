@@ -114,29 +114,25 @@ internal class LiteRtInferenceClient(
             }
         }
 
-    override fun close(model: RuntimeModel?) {
+    override suspend fun close(model: RuntimeModel?) {
         if (model == null) {
             repoScope.cancel("LiteRtInferenceClient closed without model")
             return
         }
 
-        repoScope.launch {
-            runCatchingSuspend {
-                runCancelOnSlmThread {
-                    SLM.cancel(model)
-                }
-            }.onFailure { error ->
-                RuntimeLogger.w(TAG, "close cancel failed: ${error.message}", error)
+        runCatchingSuspend {
+            runCancelOnSlmThread {
+                SLM.cancel(model)
             }
+        }.onFailure { error ->
+            RuntimeLogger.w(TAG, "close cancel failed: ${error.message}", error)
+        }
 
-            runCatchingSuspend {
-                runOnSlmThread {
-                    SLM.forceCleanUpAndWait(model)
-                }
-            }.onFailure { error ->
-                RuntimeLogger.w(TAG, "close cleanup failed: ${error.message}", error)
+        try {
+            runOnSlmThread {
+                SLM.forceCleanUpAndWait(model)
             }
-
+        } finally {
             repoScope.cancel("LiteRtInferenceClient closed")
         }
     }

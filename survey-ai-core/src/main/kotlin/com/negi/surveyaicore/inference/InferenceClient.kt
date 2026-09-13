@@ -13,7 +13,7 @@ internal interface InferenceClient {
 
     suspend fun reset(model: RuntimeModel): Result<Unit>
 
-    fun close(model: RuntimeModel?)
+    suspend fun close(model: RuntimeModel?)
 }
 
 internal data class InferenceOutput(
