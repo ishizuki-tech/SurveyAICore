@@ -19,13 +19,14 @@ BOUNDARY_TAG="SurveyAICoreC6Boundary"
 usage() {
     cat <<'EOF'
 Usage:
-  run-c6.sh --scenario foundation [--serial <serial>] [--model-check fast|full] [--expected-base <sha>] [--check]
+  run-c6.sh --scenario foundation|c6b-warm-reuse [--serial <serial>] [--model-check fast|full] [--expected-base <sha>] [--check]
 
-This C6 script has no default scenario. C6A currently exposes only the
-non-inference foundation scenario; later reviewed C6 slices add their own
-explicit selectors. Normal mode builds the assembled AAR, replacement-installs
-the harness APKs, preserves existing app data, and runs exactly one selected
-instrumentation method. It never provisions, replaces, or deletes a model.
+This C6 script has no default scenario. `foundation` is the C6A non-inference
+selector. `c6b-warm-reuse` is the reviewed C6B selector for one GPU instance
+and exactly three sequential requests. Normal mode builds the assembled AAR,
+replacement-installs the harness APKs, preserves existing app data, and runs
+exactly one selected instrumentation method. It never provisions, replaces,
+or deletes a model.
 EOF
 }
 
@@ -94,6 +95,9 @@ HARNESS_AAR="$HARNESS_ROOT/app/libs/survey-ai-core-release.aar"
 case "$SCENARIO" in
     foundation)
         TEST_CLASS="com.negi.surveyaicore.c6harness.C6FoundationInstrumentationTest#eventRecorderKeepsHarnessIdentitiesOrderedAndFilterable"
+        ;;
+    c6b-warm-reuse)
+        TEST_CLASS="com.negi.surveyaicore.c6harness.C6WarmReuseInstrumentationTest#warmReuseSequential"
         ;;
     *)
         fail "Scenario '$SCENARIO' is not implemented by this reviewed C6A script"
