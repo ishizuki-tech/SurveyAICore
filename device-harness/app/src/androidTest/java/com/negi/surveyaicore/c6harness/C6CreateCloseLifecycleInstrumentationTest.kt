@@ -1,5 +1,6 @@
 package com.negi.surveyaicore.c6harness
 
+import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
@@ -129,7 +130,10 @@ class C6CreateCloseLifecycleInstrumentationTest {
         val started = CompletableDeferred<C6OwnedRequest>()
         var lifecycleJob: Job? = null
         var lifecycleInstance: C6RuntimeInstance? = null
-        val scenario = ActivityScenario.launch(C6LifecycleActivity::class.java)
+        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val scenario = ActivityScenario.launch<C6LifecycleActivity>(
+            Intent(targetContext, C6LifecycleActivity::class.java),
+        )
         try {
             scenario.onActivity { activity ->
                 lifecycleJob =
