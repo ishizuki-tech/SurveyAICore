@@ -83,6 +83,50 @@ class C6CreateCloseLifecycleInstrumentationTest {
         }
     }
 
+    @Test
+    fun lifecycleCancellationAndRecoveryOnly(): Unit = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val recorder = C6EventRecorder(scenarioId = SUPPLEMENTAL_SCENARIO_ID)
+        val config =
+            SurveyAICoreConfig(
+                accelerator = SurveyAICoreAccelerator.GPU,
+                maxTokens = 512,
+                topK = 1,
+                topP = 0.0f,
+                temperature = 0.0f,
+            )
+        val runner = C6RuntimeRunner(context, recorder)
+        val lifecycleInstanceId = "c6d-lifecycle-d"
+        val recoveryInstanceId = "c6d-recovery-e"
+
+        recorder.record(C6EventType.SESSION_BEGIN)
+        recorder.record(C6EventType.SCENARIO_BEGIN, accelerator = config.accelerator.name)
+        try {
+            val lifecycle = lifecycleCancellation(runner, recorder, config, lifecycleInstanceId)
+            val recovery = normalCycle(runner, recorder, config, recoveryInstanceId)
+
+            assertTrue(lifecycle.closeSequence < recovery.createSequence)
+            assertEquals(2, setOf(lifecycle.requestId, recovery.requestId).size)
+            assertEquals(2, setOf(lifecycle.instanceId, recovery.instanceId).size)
+
+            recorder.record(
+                C6EventType.SCENARIO_PASS,
+                accelerator = config.accelerator.name,
+                detail = "requests=2 lifecycleCancel=${lifecycle.requestId} recovery=${recovery.requestId} config=GPU/512/1/0.0/0.0",
+            )
+        } catch (failure: Throwable) {
+            recorder.record(
+                C6EventType.SCENARIO_FAIL,
+                accelerator = config.accelerator.name,
+                detail = failure.javaClass.simpleName,
+            )
+            throw failure
+        } finally {
+            recorder.record(C6EventType.SESSION_END, accelerator = config.accelerator.name)
+            recorder.snapshot().forEach { Log.i(C6EvidenceContract.TAG, it.toEvidenceLine()) }
+        }
+    }
+
     private suspend fun CoroutineScope.normalCycle(
         runner: C6RuntimeRunner,
         recorder: C6EventRecorder,
@@ -200,6 +244,7 @@ class C6CreateCloseLifecycleInstrumentationTest {
 
     private companion object {
         const val SCENARIO_ID = "c6d-create-close-lifecycle"
+        const val SUPPLEMENTAL_SCENARIO_ID = "c6d-lifecycle-recovery-supplemental"
         const val PROMPT = "Answer in one short sentence: What is the capital of Japan?"
     }
 }
