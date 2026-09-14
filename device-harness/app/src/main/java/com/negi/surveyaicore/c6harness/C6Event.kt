@@ -32,6 +32,8 @@ internal enum class C6EventType {
     SCENARIO_PASS,
     SCENARIO_FAIL,
     SESSION_END,
+    DEMAND_READY,
+    DEMAND_RELEASED,
 }
 
 internal data class C6Event(

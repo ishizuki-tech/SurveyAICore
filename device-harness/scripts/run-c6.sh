@@ -19,7 +19,7 @@ BOUNDARY_TAG="SurveyAICoreC6Boundary"
 usage() {
     cat <<'EOF'
 Usage:
-  run-c6.sh --scenario foundation|c6b-warm-reuse|c6c-cancellation-recovery|c6d-create-close-lifecycle|c6d-lifecycle-recovery-supplemental [--serial <serial>] [--model-check fast|full] [--expected-base <sha>] [--check]
+  run-c6.sh --scenario foundation|c6b-warm-reuse|c6c-cancellation-recovery|c6d-create-close-lifecycle|c6d-lifecycle-recovery-supplemental|c6e-multiple-instance-serialization [--serial <serial>] [--model-check fast|full] [--expected-base <sha>] [--check]
 
 This C6 script has no default scenario. `foundation` is the C6A non-inference
 selector. `c6b-warm-reuse` is the reviewed C6B selector for one GPU instance
@@ -33,6 +33,9 @@ cancellation and fresh recovery portions of C6D. Normal mode builds the assemble
 replacement-installs the harness APKs, preserves existing app data, and runs
 exactly one selected instrumentation method. It never provisions, replaces,
 or deletes a model.
+`c6e-multiple-instance-serialization` is the reviewed C6E selector for four
+independent public instances, one concurrently released request each, and
+process-wide serialized native inference.
 EOF
 }
 
@@ -113,6 +116,9 @@ case "$SCENARIO" in
         ;;
     c6d-lifecycle-recovery-supplemental)
         TEST_CLASS="com.negi.surveyaicore.c6harness.C6CreateCloseLifecycleInstrumentationTest#lifecycleCancellationAndRecoveryOnly"
+        ;;
+    c6e-multiple-instance-serialization)
+        TEST_CLASS="com.negi.surveyaicore.c6harness.C6MultipleInstanceSerializationInstrumentationTest#multipleInstancesSerializeConcurrentDemand"
         ;;
     *)
         fail "Scenario '$SCENARIO' is not implemented by this reviewed C6A script"
