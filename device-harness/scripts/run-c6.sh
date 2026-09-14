@@ -19,7 +19,7 @@ BOUNDARY_TAG="SurveyAICoreC6Boundary"
 usage() {
     cat <<'EOF'
 Usage:
-  run-c6.sh --scenario foundation|c6b-warm-reuse|c6c-cancellation-recovery|c6d-create-close-lifecycle|c6d-lifecycle-recovery-supplemental|c6e-multiple-instance-serialization [--serial <serial>] [--model-check fast|full] [--expected-base <sha>] [--check]
+  run-c6.sh --scenario foundation|c6b-warm-reuse|c6c-cancellation-recovery|c6d-create-close-lifecycle|c6d-lifecycle-recovery-supplemental|c6e-multiple-instance-serialization|c6f-cpu-gpu-boundary [--serial <serial>] [--model-check fast|full] [--expected-base <sha>] [--check]
 
 This C6 script has no default scenario. `foundation` is the C6A non-inference
 selector. `c6b-warm-reuse` is the reviewed C6B selector for one GPU instance
@@ -36,6 +36,8 @@ or deletes a model.
 `c6e-multiple-instance-serialization` is the reviewed C6E selector for four
 independent public instances, one concurrently released request each, and
 process-wide serialized native inference.
+`c6f-cpu-gpu-boundary` is the reviewed C6F selector for one fresh CPU instance
+and request, followed by close and one fresh GPU instance and request.
 EOF
 }
 
@@ -119,6 +121,9 @@ case "$SCENARIO" in
         ;;
     c6e-multiple-instance-serialization)
         TEST_CLASS="com.negi.surveyaicore.c6harness.C6MultipleInstanceSerializationInstrumentationTest#multipleInstancesSerializeConcurrentDemand"
+        ;;
+    c6f-cpu-gpu-boundary)
+        TEST_CLASS="com.negi.surveyaicore.c6harness.C6CpuGpuBoundaryInstrumentationTest#cpuThenGpuBoundary"
         ;;
     *)
         fail "Scenario '$SCENARIO' is not implemented by this reviewed C6A script"
