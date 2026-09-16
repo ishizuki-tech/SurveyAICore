@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">SurveyAICore C5 Harness</string>
+    <string name="title">SurveyAICore C5 Harness</string>
+    <string name="status_ready">Public smoke runner is ready for C5C model provisioning.</string>
+    <string name="status_running">Smoke running…</string>
+    <string name="status_pass">Smoke PASS</string>
+    <string name="status_fail">Smoke FAIL</string>
+    <string name="status_model_missing">MODEL MISSING</string>
+    <string name="model_present">Model present: %1$s</string>
+    <string name="model_missing">MODEL MISSING: %1$s</string>
+    <string name="run_smoke">Run Smoke</string>
+    <string name="result_model_missing">Provisioning belongs to C5C; no smoke run was started.</string>
+    <string name="result_report">Deltas: %1$d\nDuration: %2$d ms\nTimed out: %3$b\nError: %4$s\nText: %5$s</string>
+    <string name="result_exception">%1$s: %2$s</string>
+    <string name="no_error">none</string>
+    <string name="no_message">no message</string>
+</resources>
