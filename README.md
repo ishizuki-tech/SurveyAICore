@@ -49,7 +49,7 @@ Answer + survey context
     -> Complete | Incomplete
       -> FollowupGenerator
         -> NeedFollowup(question)
-          -> caller stores AnsweredFollowup
+          -> caller stores SurveyAIAnsweredFollowup
             -> FollowupOrchestrator re-evaluates
 ```
 
