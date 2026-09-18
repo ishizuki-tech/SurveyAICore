@@ -27,6 +27,9 @@ android {
 
 dependencies {
     implementation(files("libs/survey-ai-core-release.aar"))
+
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.16.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 

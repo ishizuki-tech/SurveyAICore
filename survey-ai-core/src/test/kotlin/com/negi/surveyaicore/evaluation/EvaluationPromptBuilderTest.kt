@@ -10,7 +10,13 @@ class EvaluationPromptBuilderTest {
     fun normalInputIncludesTheRequiredStructuredContent() {
         val prompt = EvaluationPromptBuilder.build(input())
 
-        assertTrue(prompt.contains("{\"score\":N,\"missing_points\":[]}"))
+        assertTrue(prompt.contains("Use only the exact keys \"score\" and \"missing_points\""))
+        assertTrue(prompt.contains("never translate, suffix, modify, or rename either key"))
+        assertTrue(prompt.contains("Return exactly one JSON object and nothing else: no markdown, code fences, or prose."))
+        assertTrue(prompt.contains("If score is below 90, missing_points must contain at least one specific missing point."))
+        assertTrue(prompt.contains("If missing_points is empty, score must be 90 or higher."))
+        assertTrue(prompt.contains("{\"score\":75,\"missing_points\":[\"photosynthesis reduction\"]}"))
+        assertTrue(prompt.contains("{\"score\":95,\"missing_points\":[]}"))
         assertTrue(prompt.contains("Question: What changed in your crop?"))
         assertTrue(prompt.contains("Expected answer target: State the change and its cause."))
         assertTrue(prompt.contains("Original answer: My crop yield fell because of pests."))
