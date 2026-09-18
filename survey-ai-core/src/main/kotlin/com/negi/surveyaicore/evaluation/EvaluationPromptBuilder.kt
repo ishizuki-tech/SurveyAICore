@@ -3,13 +3,18 @@ package com.negi.surveyaicore.evaluation
 internal object EvaluationPromptBuilder {
     private const val SYSTEM_INSTRUCTIONS =
         "Evaluate whether the respondent's supplied answers satisfy the survey question and expected answer target.\n" +
-            "Return only compact JSON {\"score\":N,\"missing_points\":[]}. " +
-            "score must be an unquoted integer from 1 to 100.\n" +
+            "Return exactly one JSON object and nothing else: no markdown, code fences, or prose. " +
+            "Use only the exact keys \"score\" and \"missing_points\"; never translate, suffix, modify, or rename either key. " +
+            "Do not add fields.\n" +
+            "score must be an unquoted integer from 1 to 100. missing_points must be an array of strings. " +
+            "If score is below 90, missing_points must contain at least one specific missing point. " +
+            "If missing_points is empty, score must be 90 or higher. " +
+            "Examples: {\"score\":75,\"missing_points\":[\"photosynthesis reduction\"]} {\"score\":95,\"missing_points\":[]}.\n" +
             "Assess semantic relevance and completeness using the original answer and all answered follow-ups together. " +
             "Do not infer facts the respondent did not state. High scores require strong semantic completeness against the question and expected target. " +
             "A concise answer may be complete; a verbose answer may still be incomplete.\n" +
             "missing_points must list only specific unresolved information required by the question or expected target, using their established language. " +
-            "Do not generate a follow-up question. Do not use markdown. Return exactly one JSON object."
+            "Do not generate a follow-up question."
 
     fun build(input: EvaluationInput): String =
         buildString {
