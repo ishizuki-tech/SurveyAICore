@@ -1,6 +1,6 @@
 # SurveyAICore
 
-SurveyAICore is an Android library for local, model-file-backed survey AI. It uses LiteRT-LM for text generation and contains internal building blocks for answer evaluation, follow-up question generation, and bounded follow-up orchestration. The public API is deliberately small: applications own their survey UI, persistence, prompts, and orchestration integration.
+SurveyAICore is an Android library for local, model-file-backed survey AI. It uses LiteRT-LM for text generation and contains internal building blocks for answer evaluation, follow-up question generation, and bounded follow-up orchestration. The public API is deliberately small: applications own their survey UI, persistence, prompts, and `SurveyAICore` lifecycle.
 
 ## Current status
 
@@ -19,7 +19,6 @@ SurveyAICore is an Android library for local, model-file-backed survey AI. It us
 
 **Not yet provided as a public product API**
 
-- Public evaluator, follow-up generator, or orchestration entry points.
 - Survey2026 application integration.
 - A one-call combined evaluate-and-follow-up API.
 - Shared native conversation state for a whole survey question.
@@ -50,11 +49,11 @@ Answer + survey context
     -> Complete | Incomplete
       -> FollowupGenerator
         -> NeedFollowup(question)
-          -> caller stores AnsweredFollowup
+          -> caller stores SurveyAIAnsweredFollowup
             -> FollowupOrchestrator re-evaluates
 ```
 
-`AnswerEvaluator`, `FollowupGenerator`, and `FollowupOrchestrator` are internal implementation types. The application layer is responsible for presenting a question, collecting the response, persisting answered follow-ups, and invoking the next internal step when an integration is added.
+`AnswerEvaluator`, `FollowupGenerator`, and `FollowupOrchestrator` are internal implementation types. `SurveyAIFollowup` is the public stateless facade over that bounded flow. The application layer presents questions, collects and persists answered follow-ups, and supplies the complete immutable state on each facade invocation.
 
 ## Public API
 
@@ -64,6 +63,8 @@ The currently public API consists of:
 - `SurveyAICore.generate(prompt, onDelta)`
 - `SurveyAICore.close()`
 - `SurveyAICoreConfig`, `SurveyAICoreAccelerator`, and `SurveyAICoreResult`
+- `SurveyAIFollowup.from(core)` and `SurveyAIFollowup.advance(request)`
+- `SurveyAIFollowupRequest`, `SurveyAIAnsweredFollowup`, `SurveyAIFollowupPolicy`, `SurveyAICompletionPolicy`, `SurveyAIFollowupOutcome`, and its public stop/stage/failure enums
 
 ```kotlin
 val core = SurveyAICore.create(
@@ -109,9 +110,9 @@ The internal generator makes one inference and accepts only one plain-text follo
 
 ## Orchestration
 
-`FollowupOrchestrator` first evaluates the original answer and any supplied answered-follow-up history. A complete evaluation returns `Completed`. An incomplete evaluation either generates one follow-up while capacity remains or returns `Stopped(FollowupCapacityExhausted)`. The caller appends the question and response as `AnsweredFollowup`, then calls `advance()` again for a fresh evaluation.
+`SurveyAIFollowup` maps immutable public request and policy DTOs to the internal flow. `FollowupOrchestrator` first evaluates the original answer and any supplied answered-follow-up history. A complete evaluation returns `Completed`. An incomplete evaluation either generates one follow-up while capacity remains or returns `Stopped(FollowupCapacityExhausted)`. The caller appends the generated question and response as `SurveyAIAnsweredFollowup`, then calls `SurveyAIFollowup.advance()` again with a fresh request.
 
-The orchestration policy is internal and receives an explicit `maxFollowups`. It does not persist state, own UI, or expose a public workflow API.
+The public facade and internal orchestration policy are stateless and receive an explicit `maxFollowups`. Neither persists state, owns UI, owns `SurveyAICore`, or shares native conversation history.
 
 ## Runtime configuration
 
@@ -147,7 +148,7 @@ The separate `device-harness` Gradle project consumes an assembled release AAR i
 - **C6** provides explicit runtime scenarios for foundation, warm reuse, cancellation recovery, create/close lifecycle recovery, multiple-instance serialization, and CPU-to-GPU boundaries.
 - **C7** provides isolated Core Android instrumentation methods for preflight, evaluator characterization, generator characterization, and a single orchestration scenario. Its runner checks a supplied model size and SHA-256, uses a dedicated test package, and bounds an instrumentation invocation.
 
-Historical C6 and C7 device-validation evidence is retained. Their checked-in runners are intentionally branch-gated to `phase-c6-runtime-validation` and `codex/device-characterization`, respectively, preserving the exact source contexts used for that physical-device evidence. Do not execute either runner directly from current `main` without deliberate runner maintenance or update.
+C6/C7 source and their historical validation checkpoints are retained. Their checked-in runners are intentionally branch-gated to `phase-c6-runtime-validation` and `codex/device-characterization`, respectively, preserving the exact source contexts used for that physical-device validation. Do not execute either runner directly from current `main` without deliberate runner maintenance or update. Generated models, APKs, and captured device logs are not tracked, so raw historical physical-device results cannot be independently reproduced from repository contents alone; this describes the evidence boundary and does not invalidate the historical validation.
 
 Device tests require an explicitly supplied compatible device and model. They are not run by the commands above.
 
@@ -157,15 +158,14 @@ GitHub Actions workflow **SurveyAICore PR Unit Tests** runs `./gradlew :survey-a
 
 ## Current limitations
 
-- The library has no public high-level evaluation or follow-up API yet.
 - Survey persistence, UI, and application integration are outside this repository.
 - Evaluation and generation remain separate inference operations; there is no combined one-step model call.
 - Native conversation history is reset after requests rather than shared for a whole survey question.
-- The repository does not package model files or version device evidence.
+- The repository does not package model files or track generated device-test APKs and logs.
 
 ## Next development stage
 
-The next supported milestone is to design a stable public integration boundary for the internal evaluator and follow-up flow, then integrate it through an application layer without expanding the current runtime contract implicitly.
+The next major milestone is a feature-gated one-node Survey2026 integration using the public `SurveyAIFollowup` AAR contract, without expanding the current runtime contract implicitly.
 
 ## License
 
