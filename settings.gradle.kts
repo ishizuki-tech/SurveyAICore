@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "SurveyAICore"
 include(":survey-ai-core")
+include(":user-test-app")
